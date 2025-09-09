@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ Music Player Project</title>
+    <link rel="stylesheet" href="style.css"> <!-- Link to your CSS file -->
+</head>
+<body>
+
+    <header>
+        <h1>My C++ Music Player Project</h1>
+        <p>A simple, command-line based music playlist manager.</p>
+    </header>
+
+    <main>
+        <section id="description">
+            <h2>About The Project</h2>
+            <p>
+                This is a command-line application written in C++ that allows users to manage a playlist of songs.
+                It uses a doubly-linked list to store the songs and supports features like adding, removing, searching,
+                and saving playlists to a file. It also includes shuffle and repeat modes.
+            </p>
+        </section>
+
+        <section id="code-snippet">
+            <h2>Code Snippet</h2>
+            <p>Here is a look at the main class that powers the application:</p>
+            <pre><code>
+// Paste a small, interesting part of your C++ code here.
+// For example, the Playlist class definition.
+class Playlist {
+private:
+    std::unique_ptr<Song> head;
+    Song* tail;
+    Song* current;
+    // ...
+public:
+    Playlist(std::string file = "playlist.txt");
+    void addSong(const std::string& name);
+    void removeSong(const std::string& name);
+    // ...
+};
+            </code></pre>
+            <p>
+                The full source code is available on my GitHub!
+            </p>
+            <a href="YOUR_GITHUB_REPO_LINK_HERE" class="button">View on GitHub</a>
+        </section>
+
+        <section id="how-to-use">
+            <h2>How to Compile and Run</h2>
+            <p>To run this project on your own machine:</p>
+            <ol>
+                <li>Clone the repository from GitHub.</li>
+                <li>Make sure you have a C++ compiler (like g++).</li>
+                <li>Navigate to the project directory and compile the code using the command:</li>
+                <li><pre><code>g++ -std=c++17 -o music_player main.cpp</code></pre></li>
+                <li>Run the executable: <pre><code>./music_player</code></pre></li>
+            </ol>
+        </section>
+    </main>
+
+    <footer>
+        <p>Project created by [Your Name]</p>
+    </footer>
+
+</body>
+</html>
