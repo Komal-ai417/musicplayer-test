@@ -3,67 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C++ Music Player Project</title>
-    <link rel="stylesheet" href="style.css"> <!-- Link to your CSS file -->
+    <title>Web Music Player</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
 
-    <header>
-        <h1>My C++ Music Player Project</h1>
-        <p>A simple, command-line based music playlist manager.</p>
-    </header>
+    <!-- The actual audio engine, hidden from view -->
+    <audio id="audio-player"></audio>
 
-    <main>
-        <section id="description">
-            <h2>About The Project</h2>
-            <p>
-                This is a command-line application written in C++ that allows users to manage a playlist of songs.
-                It uses a doubly-linked list to store the songs and supports features like adding, removing, searching,
-                and saving playlists to a file. It also includes shuffle and repeat modes.
-            </p>
-        </section>
+    <div class="player-container">
+        <header>
+            <h1>Web Music Player</h1>
+            <div class="now-playing">
+                <h2>Now Playing: <span id="current-song-display">None</span></h2>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar"></div>
+                </div>
+                <div class="time-display">
+                    <span id="current-time">0:00</span>
+                    <span id="total-time">0:00</span>
+                </div>
+            </div>
+        </header>
 
-        <section id="code-snippet">
-            <h2>Code Snippet</h2>
-            <p>Here is a look at the main class that powers the application:</p>
-            <pre><code>
-// Paste a small, interesting part of your C++ code here.
-// For example, the Playlist class definition.
-class Playlist {
-private:
-    std::unique_ptr<Song> head;
-    Song* tail;
-    Song* current;
-    // ...
-public:
-    Playlist(std::string file = "playlist.txt");
-    void addSong(const std::string& name);
-    void removeSong(const std::string& name);
-    // ...
-};
-            </code></pre>
-            <p>
-                The full source code is available on my GitHub!
-            </p>
-            <a href="YOUR_GITHUB_REPO_LINK_HERE" class="button">View on GitHub</a>
-        </section>
+        <main>
+            <div class="controls">
+                <button id="prev-btn" class="control-btn"><i class="fas fa-backward"></i></button>
+                <button id="play-pause-btn" class="control-btn play-btn"><i id="play-pause-icon" class="fas fa-play"></i></button>
+                <button id="next-btn" class="control-btn"><i class="fas fa-forward"></i></button>
+                <button id="shuffle-btn" class="control-btn toggle-btn"><i class="fas fa-shuffle"></i></button>
+                <button id="repeat-btn" class="control-btn toggle-btn"><i class="fas fa-repeat"></i></button>
+            </div>
 
-        <section id="how-to-use">
-            <h2>How to Compile and Run</h2>
-            <p>To run this project on your own machine:</p>
-            <ol>
-                <li>Clone the repository from GitHub.</li>
-                <li>Make sure you have a C++ compiler (like g++).</li>
-                <li>Navigate to the project directory and compile the code using the command:</li>
-                <li><pre><code>g++ -std=c++17 -o music_player main.cpp</code></pre></li>
-                <li>Run the executable: <pre><code>./music_player</code></pre></li>
-            </ol>
-        </section>
-    </main>
+            <div class="add-song-section">
+                <!-- Hidden file input -->
+                <input type="file" id="file-input" accept="audio/*" multiple hidden>
+                <!-- Styled button that triggers the file input -->
+                <label for="file-input" class="file-label">
+                    <i class="fas fa-plus"></i> Add Songs from Computer
+                </label>
+            </div>
 
-    <footer>
-        <p>Project created by [Your Name]</p>
-    </footer>
+            <div class="playlist-section">
+                <h3>Playlist</h3>
+                <ul id="playlist-ul">
+                    <!-- Songs will be added here by JavaScript -->
+                </ul>
+            </div>
+        </main>
+    </div>
 
+    <script src="script.js"></script>
 </body>
 </html>
