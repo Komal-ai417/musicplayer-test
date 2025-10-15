@@ -1,98 +1,84 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+struct Operation {
+    int type; // 1 or 2
+    int k;    // only valid when type == 1
+};
+
 int main() {
-  ios::sync_with_stdio(false);
-  cin.tie(nullptr);
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
 
-  int T;
-  if (!(cin >> T)) return 0;
-  for (int tc = 1; tc <= T; ++tc) {
-    int arrayLength;
-    cin >> arrayLength;
-    vector<int> inputArray(arrayLength);
-    for (int i = 0; i < arrayLength; ++i) cin >> inputArray[i];
+    int T;
+    if (!(cin >> T)) return 0;
+    for (int tc = 1; tc <= T; ++tc) {
+        int N;
+        cin >> N;
+        vector<int> A(N);
+        for (int i = 0; i < N; ++i) cin >> A[i];
 
-    // 1) Partition A into blocks that are rotated identities.
-    //    For a block starting at value s:
-    //      - If s == 1: it's [1,2,...,k] (no wrap), k = last value of the increasing run.
-    //      - If s > 1: it's [s, s+1, ..., k, 1, 2, ..., s-1], where the first time we see 1
-    //                  occurs right after reaching k.
-    vector<int> blockLengths; // k_i
-    vector<int> blockShifts;  // r_i = s_i - 1
-    int currentIndex = 0;
-    while (currentIndex < arrayLength) {
-      int blockStartValue = inputArray[currentIndex];
-      int blockEndIndex = currentIndex;
+        // Parse A into rows (length k, start value s)
+        vector<pair<int,int>> rows; // {k, s}
+        rows.reserve(N);
+        for (int i = 0; i < N; ) {
+            int s = A[i];
+            if (s == 1) {
+                int j = i;
+                while (j + 1 < N && A[j + 1] == A[j] + 1) ++j;
+                int k = A[j];
+                rows.emplace_back(k, 1);
+                i = j + 1;
+            } else {
+                int j = i;
+                while (j + 1 < N && A[j + 1] == A[j] + 1) ++j;
+                int k = A[j];
+                // Expect wrap to 1 then continue to s-1
+                if (j + 1 < N && A[j + 1] == 1) {
+                    ++j; // now at first 1 after wrap
+                    // Advance until we reach s-1 (end of this row)
+                    while (j < N && A[j] != s - 1) ++j;
+                    // Given problem guarantees, s-1 will be found
+                } else {
+                    // Given guarantees, this should not happen; but guard anyway
+                    // Treat as minimal row (k = s) ending immediately
+                }
+                rows.emplace_back(k, s);
+                i = j + 1;
+            }
+        }
 
-      // Extend strictly increasing by +1
-      while (blockEndIndex + 1 < arrayLength &&
-             inputArray[blockEndIndex + 1] == inputArray[blockEndIndex] + 1) {
-        ++blockEndIndex;
-      }
+        // Generate reverse operations:
+        // Maintain total right-rotations applied so far (in reverse).
+        vector<Operation> revOps;
+        revOps.reserve(N); // M <= N
+        long long totalRightRotations = 0;
 
-      if (blockStartValue == 1) {
-        // Block is [1,2,...,k]
-        int k = inputArray[blockEndIndex];
-        blockLengths.push_back(k);
-        blockShifts.push_back(0);
-        currentIndex = blockEndIndex + 1;
-      } else {
-        // Block is [s, s+1, ..., k, 1, 2, ..., s-1]
-        int k = inputArray[blockEndIndex];
-        // Include the '1'
-        ++blockEndIndex; // now at the '1'
-        // Consume 2..s-1 (s-1 elements total including the '1' we just included)
-        // We rely on the problem guarantee; bounds/values are valid.
-        blockEndIndex += (blockStartValue - 1) - 1; // we already included '1', so add (s-2) more
-        blockLengths.push_back(k);
-        blockShifts.push_back(blockStartValue - 1);
-        currentIndex = blockEndIndex + 1;
-      }
+        for (int idx = (int)rows.size() - 1; idx >= 0; --idx) {
+            int k = rows[idx].first;
+            int s = rows[idx].second; // initial first element of this row in final A
+
+            // Effective first element after totalRightRotations:
+            // Need d right-rotations so that first element becomes 1.
+            // d = ((s-1) - (totalRightRotations mod k)) mod k, normalized to [0, k-1]
+            int rmod = (int)(totalRightRotations % k);
+            int d = ( ( (s - 1) - rmod ) % k + k ) % k;
+
+            for (int t = 0; t < d; ++t) revOps.push_back({2, 0});
+            totalRightRotations += d;
+
+            revOps.push_back({1, k});
+        }
+
+        // Forward operations are the reverse of revOps
+        cout << "Case #" << tc << ": " << (int)revOps.size() << '\n';
+        for (int i = (int)revOps.size() - 1; i >= 0; --i) {
+            if (revOps[i].type == 1) {
+                cout << "1 " << revOps[i].k << '\n';
+            } else {
+                cout << "2\n";
+            }
+        }
     }
-
-    // 2) Compute rotations-after-insertion t_i backwards:
-    //    t_m = r_m; t_i = smallest >= t_{i+1} with t_i ≡ r_i (mod k_i)
-    int blockCount = (int)blockLengths.size();
-    vector<long long> rotationsAfterInsertion(blockCount, 0);
-    rotationsAfterInsertion[blockCount - 1] = blockShifts.back();
-    for (int i = blockCount - 2; i >= 0; --i) {
-      long long r = blockShifts[i];
-      long long k = blockLengths[i];
-      long long nextT = rotationsAfterInsertion[i + 1];
-      if (r >= nextT) {
-        rotationsAfterInsertion[i] = r;
-      } else {
-        long long need = nextT - r;
-        long long hops = (need + k - 1) / k; // ceil(need/k)
-        rotationsAfterInsertion[i] = r + hops * k;
-      }
-    }
-
-    // 3) Emit operations:
-    //    For i in [0..m-2]: output "1 k_i", then (t_i - t_{i+1}) times "2".
-    //    Then output "1 k_m", followed by t_m times "2".
-    vector<pair<int,int>> ops; // {type, k} where type 1 => (1,k), type 2 => (2,0)
-    for (int i = 0; i + 1 < blockCount; ++i) {
-      ops.push_back({1, blockLengths[i]});
-      long long diff = rotationsAfterInsertion[i] - rotationsAfterInsertion[i + 1];
-      for (long long d = 0; d < diff; ++d) ops.push_back({2, 0});
-    }
-    // Last block
-    ops.push_back({1, blockLengths.back()});
-    for (long long d = 0; d < rotationsAfterInsertion.back(); ++d) ops.push_back({2, 0});
-
-    cout << "Case #" << tc << ": " << ops.size() << "\n";
-    for (auto const& p : ops) {
-        int type = p.first;
-        int k = p.second;
-
-        if (type == 1)
-            cout << "1 " << k << "\n";
-        else
-            cout << "2\n";
-    }
-  }
-
-  return 0;
+    return 0;
 }
