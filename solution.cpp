@@ -28,7 +28,8 @@ int main() {
         
         int pos = 0;
         while (pos < N) {
-            int best_len = -1, best_rot_before = 0, best_rot_after = 0, best_new_pos = pos;
+            int best_len = -1, best_rot_before = 0, best_rot_after = 0;
+            size_t best_new_pos = pos;
             
             // Try rotating before adding (if B is not empty)
             if (!B.empty()) {
@@ -59,9 +60,9 @@ int main() {
                             }
                             
                             vector<int> flattened = flatten(test_B2);
-                            if (flattened.size() <= N) {
+                            if (flattened.size() <= (size_t)N) {
                                 bool matches = true;
-                                for (int i = 0; i < flattened.size(); i++) {
+                                for (size_t i = 0; i < flattened.size(); i++) {
                                     if (flattened[i] != A[i]) {
                                         matches = false;
                                         break;
@@ -97,9 +98,9 @@ int main() {
                     }
                     
                     vector<int> flattened = flatten(test_B);
-                    if (flattened.size() <= N) {
+                    if (flattened.size() <= (size_t)N) {
                         bool matches = true;
-                        for (int i = 0; i < flattened.size(); i++) {
+                        for (size_t i = 0; i < flattened.size(); i++) {
                             if (flattened[i] != A[i]) {
                                 matches = false;
                                 break;
@@ -125,7 +126,7 @@ int main() {
                 }
             }
             
-            if (best_new_pos > pos) {
+            if (best_new_pos > (size_t)pos) {
                 // Apply rotations before
                 for (int r = 0; r < best_rot_before; r++) {
                     ops.push_back("2");
@@ -150,7 +151,7 @@ int main() {
                     }
                 }
                 
-                pos = best_new_pos;
+                pos = (int)best_new_pos;
             } else {
                 break;
             }
