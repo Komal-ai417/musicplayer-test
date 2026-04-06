@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM ELEMENTS ---
-    // hi
     const audioPlayer = document.getElementById('audio-player');
     const currentSongDisplay = document.getElementById('current-song-display');
     const playPauseBtn = document.getElementById('play-pause-btn');
