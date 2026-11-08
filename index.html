@@ -1,63 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Music Player</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Font Awesome for Icons. -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Our Music</title>
+<meta name="description" content="Our own little music corner." />
+<meta name="theme-color" content="#000000" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231db954'%3E%3Cpath d='M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="./style.css" />
 </head>
 <body>
+<noscript><p style="padding:20px">This site needs JavaScript to run.</p></noscript>
 
-    <!-- The actual audio engine, hidden from view. -->
-    <audio id="audio-player"></audio>
+<!-- ============ shown only while config.js still has placeholders ============ -->
+<section id="setup-screen" class="screen" hidden>
+  <div class="setup-card">
+    <div class="setup-icon" aria-hidden="true"></div>
+    <h1>One-time setup needed</h1>
+    <p>This site isn't connected yet. Open <b>SETUP-GUIDE.html</b> (it came with these
+    files) and follow the steps &mdash; about 20&nbsp;minutes, no coding needed.</p>
+  </div>
+</section>
 
-    <div class="player-container">
-        <header>
-            <h1>Web Music Player</h1>
-            <div class="now-playing">
-                <h2>Now Playing: <span id="current-song-display">None</span></h2>
-            </div>
-            <div class="progress-container">
-                <div class="progress-bar-wrapper">
-                    <div class="progress-bar"></div>
-                </div>
-                <div class="time-display">
-                    <span id="current-time">0:00</span>
-                    <span id="total-time">0:00</span>
-                </div>
-            </div>
-        </header>
+<!-- ==================== login / signup / recovery ==================== -->
+<section id="auth-screen" class="screen" hidden>
+  <div class="auth-blobs" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="auth-card">
+    <div class="auth-logo" aria-hidden="true"></div>
+    <h1>Our Music</h1>
+    <p class="auth-sub">Your family's own music corner</p>
 
-        <main>
-            <div class="controls">
-                <button id="prev-btn" class="control-btn"><i class="fas fa-backward"></i></button>
-                <button id="play-pause-btn" class="control-btn play-btn"><i id="play-pause-icon" class="fas fa-play"></i></button>
-                <button id="next-btn" class="control-btn"><i class="fas fa-forward"></i></button>
-                <button id="shuffle-btn" class="control-btn toggle-btn"><i class="fas fa-shuffle"></i></button>
-                <button id="repeat-btn" class="control-btn toggle-btn"><i class="fas fa-repeat"></i></button>
-            </div>
-
-            <div class="add-song-section">
-                <!-- Hidden file input -->
-                <input type="file" id="file-input" accept="audio/*" multiple hidden>
-                <!-- Styled button that triggers the file input. -->
-                <label for="file-input" class="file-label">
-                    <i class="fas fa-plus"></i> Add Songs from Computer's storage
-                </label>
-            </div>
-
-            <div class="playlist-section">
-                <h3>Playlist</h3>
-                <ul id="playlist-ul">
-                    <!-- Songs will be added here by JavaScript. -->
-                </ul>
-            </div>
-        </main>
+    <div class="tabs">
+      <button type="button" id="tab-login" class="tab active">Log in</button>
+      <button type="button" id="tab-signup" class="tab">Sign up</button>
     </div>
 
-    <script src="script.js"></script>
-    
+    <form id="login-form" class="auth-form" novalidate>
+      <label>Email
+        <input id="login-email" type="email" autocomplete="email" placeholder="you@example.com" required />
+      </label>
+      <label>Password
+        <input id="login-password" type="password" autocomplete="current-password" placeholder="Your password" required />
+      </label>
+      <p id="login-error" class="form-error" hidden></p>
+      <button class="btn btn-primary btn-block" id="login-btn" type="submit">Log in</button>
+      <button type="button" class="linklike" id="forgot-link">Forgot password?</button>
+    </form>
+
+    <form id="signup-form" class="auth-form" hidden novalidate>
+      <label>Email
+        <input id="signup-email" type="email" autocomplete="email" placeholder="you@example.com" required />
+      </label>
+      <label>Create a password
+        <input id="signup-password" type="password" autocomplete="new-password" placeholder="At least 6 characters" required />
+      </label>
+      <label>Invite code
+        <input id="signup-invite" type="text" placeholder="Ask the family organizer" required />
+      </label>
+      <p id="signup-error" class="form-error" hidden></p>
+      <button class="btn btn-primary btn-block" id="signup-btn" type="submit">Create my account</button>
+    </form>
+
+    <form id="forgot-form" class="auth-form" hidden novalidate>
+      <p class="auth-sub">We'll email you a reset link.</p>
+      <label>Email
+        <input id="forgot-email" type="email" autocomplete="email" placeholder="you@example.com" required />
+      </label>
+      <p id="forgot-error" class="form-error" hidden></p>
+      <button class="btn btn-primary btn-block" id="forgot-btn" type="submit">Send reset link</button>
+      <button type="button" class="linklike" id="forgot-back">&larr; Back to log in</button>
+    </form>
+
+    <form id="recover-form" class="auth-form" hidden novalidate>
+      <p class="auth-sub">Choose a new password for your account.</p>
+      <label>New password
+        <input id="recover-password" type="password" autocomplete="new-password" placeholder="At least 6 characters" required />
+      </label>
+      <p id="recover-error" class="form-error" hidden></p>
+      <button class="btn btn-primary btn-block" id="recover-btn" type="submit">Save new password</button>
+    </form>
+  </div>
+</section>
+
+<!-- ============================== main app ============================== -->
+<section id="app-screen" hidden>
+  <aside id="sidebar">
+    <div class="side-logo"><span class="logo-note" aria-hidden="true"></span> Our Music</div>
+
+    <nav class="side-nav">
+      <button id="nav-all" class="side-nav-item active">
+        <span class="sn-ico" data-ico="note"></span>
+        <span class="sn-label">All songs</span>
+        <span id="nav-count" class="pill" hidden></span>
+      </button>
+    </nav>
+
+    <div class="upload-box" id="upload-zone" title="Click to choose songs">
+      <input type="file" id="file-input" multiple
+             accept="audio/*,.mp3,.m4a,.flac,.wav,.ogg,.aac,.opus" hidden />
+      <div class="upload-art" aria-hidden="true"></div>
+      <b>Upload songs</b>
+      <span class="muted tiny">drag &amp; drop here, or click to browse</span>
+      <div id="upload-list"></div>
+    </div>
+
+    <div class="side-playlists">
+      <div class="side-h">
+        <span>Playlists</span>
+        <button id="btn-new-playlist" class="icon-btn" title="New playlist"><span data-ico="plus"></span></button>
+      </div>
+      <ul id="playlist-nav"></ul>
+    </div>
+
+    <div class="side-user">
+      <span class="user-dot" aria-hidden="true"></span>
+      <span id="user-email" class="muted tiny"></span>
+      <button id="btn-logout" class="linklike tiny">Log out</button>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="main-top">
+      <div class="search-wrap">
+        <span class="search-ico" aria-hidden="true"></span>
+        <input id="search-input" type="search" placeholder="Search songs, artists, albums..." autocomplete="off" />
+      </div>
+    </div>
+
+    <header id="view-header">
+      <div class="vh-text">
+        <h2 id="view-title">All songs</h2>
+        <p id="view-sub" class="muted tiny"></p>
+      </div>
+      <div id="view-actions"></div>
+    </header>
+
+    <div id="table-head" class="song-row head">
+      <span class="c-idx">#</span><span class="c-cover"></span>
+      <span class="c-title">Title</span><span class="c-album">Album</span>
+      <span class="c-dur" title="Duration">&#8986;</span><span class="c-menu"></span>
+    </div>
+
+    <div id="song-list"></div>
+
+    <div id="empty-state" class="state-block" hidden>
+      <div class="state-icon note" aria-hidden="true"></div>
+      <h3>Nothing here yet</h3>
+      <p class="muted">Drag &amp; drop some songs into the box on the left to get started.</p>
+    </div>
+
+    <div id="search-empty" class="state-block" hidden>
+      <div class="state-icon search" aria-hidden="true"></div>
+      <h3>No matches</h3>
+      <p class="muted">No songs match your search.</p>
+    </div>
+
+    <div id="loading-state" class="state-block" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="muted">Loading your library...</p>
+    </div>
+
+    <div id="error-state" class="state-block" hidden>
+      <div class="state-icon moon" aria-hidden="true"></div>
+      <h3>Can't reach your library</h3>
+      <p class="muted" id="error-msg"></p>
+      <button class="btn btn-primary" id="btn-retry">Try again</button>
+    </div>
+  </main>
+
+  <footer id="player-bar" hidden>
+    <div class="pb-left">
+      <div id="pc-cover" class="pc-cover"><span class="pc-cover-note" aria-hidden="true"></span></div>
+      <div class="pc-meta">
+        <div id="pc-title" class="pc-title">Nothing playing</div>
+        <div id="pc-artist" class="pc-artist muted tiny">Pick a song to start</div>
+      </div>
+    </div>
+    <div class="pb-center">
+      <div class="pb-controls">
+        <button id="btn-shuffle" class="icon-btn mode" title="Shuffle"><span data-ico="shuffle"></span></button>
+        <button id="btn-prev" class="icon-btn" title="Previous"><span data-ico="prev"></span></button>
+        <button id="btn-play" class="btn-play" title="Play / pause">
+          <span class="ico-play" data-ico="play"></span><span class="ico-pause" data-ico="pause" hidden></span>
+        </button>
+        <button id="btn-next" class="icon-btn" title="Next"><span data-ico="next"></span></button>
+        <button id="btn-repeat" class="icon-btn mode" title="Repeat"><span data-ico="repeat"></span></button>
+      </div>
+      <div class="pb-seek">
+        <span id="time-cur" class="muted tiny">0:00</span>
+        <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek" />
+        <span id="time-dur" class="muted tiny">0:00</span>
+      </div>
+    </div>
+    <div class="pb-right">
+      <button id="btn-mute" class="icon-btn" title="Mute / unmute"><span data-ico="vol"></span></button>
+      <input id="vol" type="range" min="0" max="100" value="90" aria-label="Volume" />
+    </div>
+  </footer>
+</section>
+
+<audio id="audio" preload="metadata"></audio>
+<div id="drop-overlay" hidden><div class="do-card">Drop your songs to upload</div></div>
+<div id="toasts" aria-live="polite"></div>
+<div id="menu-layer" hidden></div>
+<div id="modal-layer" hidden><div id="modal-card" role="dialog" aria-modal="true"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.7/dist/jsmediatags.min.js"></script>
+<script src="./config.js"></script>
+<script src="./ui.js"></script>
+<script src="./github.js"></script>
+<script src="./player.js"></script>
+<script src="./library.js"></script>
+<script src="./playlists.js"></script>
+<script src="./app.js"></script>
 </body>
 </html>
