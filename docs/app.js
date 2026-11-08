@@ -1,12 +1,14 @@
 'use strict';
 /* ============================================================
-   app.js - Supabase auth, screens, bootstrapping
+   app.js - Supabase auth, screens, bootstrapping.
+   The browser only uses the anon key + the user's own session.
+   The invite code is validated INSIDE the database (trigger),
+   not in JavaScript.
    ============================================================ */
 
 /* ---------- configuration check ---------- */
 function isConfigured() {
-  const all = String(SUPABASE_URL || '') + String(SUPABASE_ANON_KEY || '') +
-              String(GITHUB_OWNER || '') + String(GITHUB_REPO || '');
+  const all = String(SUPABASE_URL || '') + String(SUPABASE_ANON_KEY || '');
   return !/PASTE|YOUR-PROJECT|YOUR-ANON/i.test(all);
 }
 
@@ -44,6 +46,8 @@ function authErrText(e) {
   const m = (e && e.message) || '';
   if (/Failed to fetch|NetworkError|fetch failed/i.test(m))
     return 'Can\u2019t reach the login service. If this keeps happening, your free Supabase project may be paused \u2014 open supabase.com, go to your project and press <b>Restore</b>, then try again.';
+  if (/Database error saving new user/i.test(m))
+    return 'Sign-up was rejected \u2014 most likely the invite code is wrong. Double-check it!';
   if (/Invalid login credentials/i.test(m)) return 'Wrong email or password.';
   if (/Email not confirmed/i.test(m)) return 'Your email isn\u2019t confirmed yet \u2014 check your inbox.';
   if (/at least 6/i.test(m)) return 'Passwords need at least 6 characters.';
@@ -70,7 +74,9 @@ document.getElementById('login-form').addEventListener('submit', async e => {
   }
 });
 
-/* signup */
+/* signup - the invite code travels in signup metadata and is
+   checked by a database trigger on auth.users. The JS check
+   below is only for quick feedback. */
 document.getElementById('signup-form').addEventListener('submit', async e => {
   e.preventDefault();
   formError('signup-error');
@@ -83,7 +89,11 @@ document.getElementById('signup-form').addEventListener('submit', async e => {
   const btn = document.getElementById('signup-btn');
   btn.disabled = true; btn.textContent = 'Creating account...';
   try {
-    const { data, error } = await state.sb.auth.signUp({ email, password: pass });
+    const { data, error } = await state.sb.auth.signUp({
+      email,
+      password: pass,
+      options: { data: { invite_code: invite } },   // <- read by the DB trigger
+    });
     if (error) { formError('signup-error', authErrText(error)); return; }
     if (!data.session) {
       formError('signup-error', 'Account created \u2014 check your inbox for a confirmation email, then log in.');
@@ -175,19 +185,28 @@ async function enterApp(session) {
 }
 
 async function loadData() {
-  const { data: cfg, error: cfgErr } = await state.sb.from('app_config')
-    .select('*').eq('id', 1).single();
-  if (cfgErr || !cfg) {
-    throw Object.assign(
-      new Error('Could not read the app settings. ' + (cfgErr ? cfgErr.message : '')),
-      { kind: 'config' });
-  }
-  state.cfg = cfg;
-  state.ghToken = cfg.github_token || '';
+  const [songsRes, plRes] = await Promise.all([
+    fnCall('songs', 'GET'),
+    fnCall('playlists', 'GET'),
+  ]);
 
-  await loadSongs();
-  await loadPlaylists();
-  await loadPlLinks();
+  if (songsRes.status === 0 || plRes.status === 0) {
+    throw Object.assign(new Error('network'), { kind: 'network' });
+  }
+  if (songsRes.status === 401 || plRes.status === 401) {
+    throw Object.assign(new Error('session'), { kind: 'session' });
+  }
+  if (!songsRes.ok) {
+    throw Object.assign(new Error(fnErrText(songsRes)), { kind: 'api', detail: songsRes.data && songsRes.data.error });
+  }
+  if (!plRes.ok) {
+    throw Object.assign(new Error(fnErrText(plRes)), { kind: 'api' });
+  }
+
+  state.songs = songsRes.data.songs || [];
+  if (songsRes.data.cfg) state.cfg = { ...state.cfg, ...songsRes.data.cfg };
+  state.playlists = plRes.data.playlists || [];
+  state.plLinks = plRes.data.links || [];
 
   state.ready = true;
   document.getElementById('loading-state').hidden = true;
@@ -197,10 +216,16 @@ async function loadData() {
 function showLoadError(e) {
   document.getElementById('loading-state').hidden = true;
   const msg = document.getElementById('error-msg');
-  if (e && e.kind === 'config') {
-    msg.innerHTML = 'The <b>app_config</b> step of the setup (SETUP-GUIDE, Step 4) hasn\u2019t been finished, or the GitHub token inside it is wrong.<br><br>' + esc(e.message);
+  if (e && e.kind === 'session') {
+    msg.innerHTML = 'Your session expired. Please log in again.';
+    state.sb.auth.signOut();
+    return;
+  }
+  if (e && e.kind === 'network') {
+    msg.innerHTML = 'Can\u2019t reach your library. Your free Supabase project may be <b>paused</b> (it sleeps after ~1 week without visits).<br>Open <b>supabase.com \u2192 your project \u2192 Restore</b>, then press Try again.';
   } else {
-    msg.innerHTML = 'Your free Supabase project may be <b>paused</b> (it sleeps after ~1 week without visits).<br>Open <b>supabase.com \u2192 your project \u2192 Restore</b>, then press Try again.<br><br><span class="tiny">' + esc((e && e.message) || '') + '</span>';
+    msg.innerHTML = 'The server said: ' + (e && e.message ? e.message : 'unknown error') +
+      '<br><br>If this mentions a missing secret or a GitHub token, finish <b>Step 5</b> of SETUP-GUIDE.html (Edge Functions + secrets).';
   }
   document.getElementById('error-state').hidden = false;
 }
@@ -211,7 +236,6 @@ function resetState() {
   state.playlists = [];
   state.plLinks = [];
   state.uploads = [];
-  state.ghToken = '';
   state.view = { type: 'all', id: null };
   state.search = '';
   document.getElementById('upload-list').innerHTML = '';

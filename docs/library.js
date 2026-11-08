@@ -1,15 +1,9 @@
 'use strict';
 /* ============================================================
-   library.js - song list, upload pipeline, delete
+   library.js - song list, upload pipeline, delete.
+   All server work happens in Edge Functions; the browser
+   only touches the private staging bucket during upload.
    ============================================================ */
-
-/* ---------- data ---------- */
-async function loadSongs() {
-  const { data, error } = await state.sb.from('songs')
-    .select('*').order('created_at', { ascending: false });
-  if (error) throw error;
-  state.songs = data || [];
-}
 
 /* songs for the current view + search filter */
 function visibleSongs() {
@@ -81,15 +75,20 @@ function refreshRowMarks() {
 function updateViewMeta() {
   const isAll = state.view.type === 'all';
   const list = visibleSongs();
-  document.getElementById('nav-count').hidden = !isAll;
-  if (isAll) document.getElementById('nav-count').textContent = state.songs.length || '';
-  document.getElementById('nav-count').hidden = !(isAll && state.songs.length);
+  document.getElementById('nav-count').hidden = true;
+  if (isAll && state.songs.length) {
+    document.getElementById('nav-count').textContent = state.songs.length;
+    document.getElementById('nav-count').hidden = false;
+  }
 
+  const baseList = state.view.type === 'all'
+    ? state.songs
+    : (typeof playlistSongs === 'function' ? playlistSongs(state.view.id) : []);
   const total = list.reduce((a, s) => a + (s.duration_sec || 0), 0);
   const mins = total ? '\u00B7 ' + Math.max(1, Math.round(total / 60)) + ' min' : '';
-  document.getElementById('view-sub').textContent =
-    (state.search.trim() ? list.length + ' of ' : '') + list.length +
-    (list.length === 1 ? ' song' : ' songs') + mins;
+  document.getElementById('view-sub').textContent = state.search.trim()
+    ? list.length + ' of ' + baseList.length + ' songs' + mins
+    : list.length + (list.length === 1 ? ' song' : ' songs') + mins;
 
   const actions = document.getElementById('view-actions');
   actions.innerHTML = '';
@@ -133,22 +132,19 @@ function openSongMenu(s, x, y) {
   openMenu(items, x, y);
 }
 
-/* ---------- delete ---------- */
+/* ---------- delete (server-side) ---------- */
 async function deleteSong(s) {
   const ok = await confirmModal('Delete song?',
-    '\u201C' + esc(s.title) + '\u201D will be removed from your library, playlists and GitHub. This can\u2019t be undone.',
+    '\u201C' + esc(s.title) + '\u201D will be removed from your library, playlists and storage. This can\u2019t be undone.',
     'Delete', true);
   if (!ok) return;
-  try {
-    await ghDeleteFile(s.file_path, 'Delete song: ' + s.title);
-  } catch (e) {
-    toast(esc(e.message), 'error', 7000);
-    return;
-  }
-  const { error } = await state.sb.from('songs').delete().eq('id', s.id);
-  if (error) { toast('File removed from GitHub, but the library entry stayed. Refresh the page and delete again.', 'error', 7000); }
+
+  const res = await fnCall('songs', 'POST', { op: 'delete', id: s.id });
+  if (!res.ok) { toast(fnErrText(res), 'error', 7000); return; }
+
   state.songs = state.songs.filter(x => x.id !== s.id);
   state.plLinks = state.plLinks.filter(l => l.song_id !== s.id);
+  streamUrls && streamUrls.delete && streamUrls.delete(s.id);
 
   if (playingId() === s.id) {
     if (queue.length > 1) playNext(false); else stopPlayback();
@@ -158,7 +154,8 @@ async function deleteSong(s) {
 }
 
 /* ============================================================
-   UPLOADS
+   UPLOADS:  browser -> private staging bucket (with progress)
+             staging -> GitHub -> library  (Edge Function)
    ============================================================ */
 const uploadZone = document.getElementById('upload-zone');
 const fileInput = document.getElementById('file-input');
@@ -182,7 +179,7 @@ function handleFiles(fileList) {
   const files = [...fileList].filter(f => f.type.startsWith('audio/') || /\.(mp3|m4a|flac|wav|ogg|aac|opus|webm)$/i.test(f.name));
   if (!files.length) { toast('Those files aren\u2019t audio \u2014 pick mp3 / m4a / wav / ogg files.', 'warn'); return; }
 
-  const pendingCount = state.uploads.filter(u => u.status === 'waiting' || u.status === 'uploading').length;
+  const pendingCount = state.uploads.filter(u => u.status !== 'done' && u.status !== 'error').length;
   const cap = state.cfg.max_songs_per_user || 200;
   if (state.songs.length + pendingCount + files.length > cap) {
     toast('That would pass your limit of ' + cap + ' songs per person. Delete a few first.', 'warn', 6000);
@@ -202,8 +199,9 @@ function renderUploadList() {
     const d = document.createElement('div');
     d.className = 'up-item ' + it.status;
     let meta;
-    if (it.status === 'uploading') meta = Math.round(it.pct * 100) + '% \u00B7 uploading to GitHub...';
+    if (it.status === 'uploading') meta = Math.round(it.pct * 100) + '% \u00B7 uploading...';
     else if (it.status === 'reading') meta = 'Reading tags...';
+    else if (it.status === 'saving') meta = 'Saving to your library...';
     else if (it.status === 'done') meta = 'Added to your library';
     else if (it.status === 'error') meta = 'Failed';
     else meta = fmtBytes(it.size) + ' \u00B7 waiting';
@@ -240,43 +238,44 @@ async function uploadOne(it) {
     renderUploadList(); return;
   }
 
+  /* 1) read tags + duration locally (nothing uploaded yet) */
   it.status = 'reading'; renderUploadList();
   let tags = null;
   try { tags = await readTags(f); } catch { /* tags are optional */ }
   const dur = await readDuration(f);
   const title = (tags && tags.title) || f.name.replace(/\.[^.]+$/, '');
-  const path = buildPath(f);
+  const thumb = (tags && tags.picture) ? await makeThumb(tags.picture) : null;
 
+  /* 2) upload to the private staging bucket (progress bar) */
+  const stagingPath = state.user.id + '/' + Date.now() + '-' + slugify(f.name) +
+                      (f.name.match(/\.[a-z0-9]{1,5}$/i) ? f.name.match(/\.[a-z0-9]{1,5}$/i)[0] : '.mp3');
   it.status = 'uploading'; it.pct = 0.02; renderUploadList();
   try {
-    const b64 = await fileToBase64(f);
-    await ghPutFile(path, b64, 'Add song: ' + title, pct => {
-      it.pct = Math.max(it.pct, pct * 0.95); renderUploadList();
+    await stagingUpload(stagingPath, f, pct => {
+      it.pct = Math.max(it.pct, pct * 0.88); renderUploadList();
     });
   } catch (e) {
     it.status = 'error'; it.err = esc(e.message); renderUploadList(); return;
   }
 
-  const thumb = (tags && tags.picture) ? await makeThumb(tags.picture) : null;
-
-  const { data, error } = await state.sb.from('songs').insert({
+  /* 3) ask the Edge Function to move it to GitHub + save the row */
+  it.status = 'saving'; it.pct = 0.92; renderUploadList();
+  const res = await fnCall('upload-song', 'POST', {
+    staging_path: stagingPath,
+    file_name: f.name,
+    file_size: f.size,
+    duration_sec: dur,
     title: title.slice(0, 300),
     artist: ((tags && tags.artist) || '').slice(0, 200) || null,
     album: ((tags && tags.album) || '').slice(0, 200) || null,
-    duration_sec: dur,
-    file_path: path,
-    file_size: f.size,
     cover_data: thumb,
-  }).select().single();
+  });
 
-  if (error) {
-    try { await ghDeleteFile(path, 'Remove orphan: ' + title); } catch { /* best effort */ }
-    it.status = 'error';
-    it.err = 'Uploaded to GitHub, but saving to the library failed: ' + esc(error.message);
-    renderUploadList(); return;
+  if (!res.ok || !res.data || !res.data.song) {
+    it.status = 'error'; it.err = fnErrText(res); renderUploadList(); return;
   }
 
-  state.songs.unshift(data);
+  state.songs.unshift(res.data.song);
   it.status = 'done'; it.pct = 1; renderUploadList();
   refreshAll();
   setTimeout(() => {
@@ -293,20 +292,6 @@ function slugify(name) {
     .replace(/^-+|-+$/g, '')
     .slice(0, 60);
   return base || 'song';
-}
-function buildPath(f) {
-  const ext = (f.name.match(/\.([a-z0-9]{1,5})$/i) || [,'mp3'])[1].toLowerCase();
-  const uid = (state.user && state.user.id) || 'me';
-  return 'songs/' + uid + '/' + Date.now() + '-' + slugify(f.name) + '.' + ext;
-}
-
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).split(',')[1] || '');
-    r.onerror = () => reject(new Error('Could not read the file.'));
-    r.readAsDataURL(file);
-  });
 }
 
 function readTags(file) {

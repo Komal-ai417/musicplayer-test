@@ -1,21 +1,9 @@
 'use strict';
 /* ============================================================
-   playlists.js - playlists CRUD + the sidebar nav + views
+   playlists.js - playlists CRUD + the sidebar nav + views.
+   All operations go through the "playlists" Edge Function,
+   which re-checks ownership on the server.
    ============================================================ */
-
-async function loadPlaylists() {
-  const { data, error } = await state.sb.from('playlists')
-    .select('*').order('created_at', { ascending: true });
-  if (error) throw error;
-  state.playlists = data || [];
-}
-
-async function loadPlLinks() {
-  const { data, error } = await state.sb.from('playlist_songs')
-    .select('playlist_id, song_id, position');
-  if (error) throw error;
-  state.plLinks = data || [];
-}
 
 function playlistSongs(plId) {
   return state.plLinks
@@ -79,29 +67,24 @@ function addPlaylistHeaderActions(container) {
   container.appendChild(del);
 }
 
-/* ---------- CRUD ---------- */
+/* ---------- CRUD (via Edge Function) ---------- */
 async function createPlaylist(name, songToAdd) {
   const n = name || await promptModal('New playlist', 'Give your playlist a name.', 'e.g. Evening chill');
   if (n == null || !n) return;
-  const { data, error } = await state.sb.from('playlists')
-    .insert({ name: n.slice(0, 100) }).select().single();
-  if (error) { toast('Could not create the playlist: ' + esc(error.message), 'error'); return; }
-  state.playlists.push(data);
-  if (songToAdd) {
-    await addToPlaylist(data, songToAdd, true);
-    showView({ type: 'playlist', id: data.id });
-  } else {
-    renderPlaylistNav();
-    showView({ type: 'playlist', id: data.id });
-    toast('Playlist \u201C' + esc(data.name) + '\u201D created');
-  }
+  const res = await fnCall('playlists', 'POST', { op: 'create', name: n });
+  if (!res.ok || !res.data || !res.data.playlist) { toast(fnErrText(res), 'error'); return; }
+  const pl = res.data.playlist;
+  state.playlists.push(pl);
+  if (songToAdd) await addToPlaylist(pl, songToAdd, true);
+  showView({ type: 'playlist', id: pl.id });
+  toast('Playlist \u201C' + esc(pl.name) + '\u201D created');
 }
 
 async function renamePlaylist(pl) {
   const n = await promptModal('Rename playlist', 'Rename \u201C' + esc(pl.name) + '\u201D:', '', pl.name);
   if (n == null || !n || n === pl.name) return;
-  const { error } = await state.sb.from('playlists').update({ name: n.slice(0, 100) }).eq('id', pl.id);
-  if (error) { toast('Could not rename: ' + esc(error.message), 'error'); return; }
+  const res = await fnCall('playlists', 'POST', { op: 'rename', id: pl.id, name: n });
+  if (!res.ok) { toast(fnErrText(res), 'error'); return; }
   pl.name = n.slice(0, 100);
   showView({ type: 'playlist', id: pl.id });
 }
@@ -111,8 +94,8 @@ async function deletePlaylist(pl) {
     '\u201C' + esc(pl.name) + '\u201D will disappear (the songs themselves are not deleted).',
     'Delete playlist', true);
   if (!ok) return;
-  const { error } = await state.sb.from('playlists').delete().eq('id', pl.id);
-  if (error) { toast('Could not delete: ' + esc(error.message), 'error'); return; }
+  const res = await fnCall('playlists', 'POST', { op: 'delete', id: pl.id });
+  if (!res.ok) { toast(fnErrText(res), 'error'); return; }
   state.playlists = state.playlists.filter(p => p.id !== pl.id);
   state.plLinks = state.plLinks.filter(l => l.playlist_id !== pl.id);
   if (state.view.type === 'playlist' && state.view.id === pl.id) showView({ type: 'all' });
@@ -122,24 +105,21 @@ async function deletePlaylist(pl) {
 
 async function addToPlaylist(pl, song, quiet) {
   const pos = state.plLinks.filter(l => l.playlist_id === pl.id).length;
-  const { error } = await state.sb.from('playlist_songs')
-    .insert({ playlist_id: pl.id, song_id: song.id, position: pos });
-  if (error) {
-    if (error.code === '23505') toast('Already in \u201C' + esc(pl.name) + '\u201D', 'warn');
-    else toast('Could not add: ' + esc(error.message), 'error');
+  const res = await fnCall('playlists', 'POST', { op: 'add', playlist_id: pl.id, song_id: song.id });
+  if (!res.ok) {
+    if (res.status === 409) toast('Already in \u201C' + esc(pl.name) + '\u201D', 'warn');
+    else toast(fnErrText(res), 'error');
     return;
   }
   state.plLinks.push({ playlist_id: pl.id, song_id: song.id, position: pos });
   if (!quiet) toast('Added to \u201C' + esc(pl.name) + '\u201D');
   renderPlaylistNav();
-  if (state.view.type === 'playlist' && state.view.id === pl.id) renderSongList();
-  else renderSongList(); /* keep counts fresh */
+  renderSongList();
 }
 
 async function removeFromPlaylist(pl, song) {
-  const { error } = await state.sb.from('playlist_songs')
-    .delete().eq('playlist_id', pl.id).eq('song_id', song.id);
-  if (error) { toast('Could not remove: ' + esc(error.message), 'error'); return; }
+  const res = await fnCall('playlists', 'POST', { op: 'remove', playlist_id: pl.id, song_id: song.id });
+  if (!res.ok) { toast(fnErrText(res), 'error'); return; }
   state.plLinks = state.plLinks.filter(l => !(l.playlist_id === pl.id && l.song_id === song.id));
   renderPlaylistNav();
   renderSongList();

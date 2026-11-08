@@ -7,7 +7,6 @@ const state = {
   sb: null,          // supabase client
   session: null,
   user: null,
-  ghToken: '',       // GitHub token, fetched from app_config after login
   cfg: { max_songs_per_user: 200, max_upload_mb: 20 },
   songs: [],         // my songs, newest first
   playlists: [],

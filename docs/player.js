@@ -1,6 +1,9 @@
 'use strict';
 /* ============================================================
    player.js - the audio engine + bottom player bar
+   Songs now play through short-lived signed links minted by
+   the "songs" Edge Function - the browser never sees GitHub
+   URLs or any token.
    ============================================================ */
 
 const audioEl = document.getElementById('audio');
@@ -11,7 +14,9 @@ let history = [];        // played indexes (for "previous" in shuffle mode)
 let shuffle = false;
 let repeat = 0;          // 0 = off, 1 = repeat all, 2 = repeat one
 let seekDragging = false;
-let srcTry = { songId: null, n: 0 };   // fallback chain state
+let srcTry = { songId: null, n: 0 };   // retry state for playback links
+
+const streamUrls = new Map();          // songId -> { url, exp }
 
 function currentSong() { return queue[qpos] || null; }
 function playingId() { const s = currentSong(); return s ? s.id : null; }
@@ -69,35 +74,48 @@ function stopPlayback() {
   if (typeof refreshRowMarks === 'function') refreshRowMarks();
 }
 
-/* ---------- loading / fallback chain ---------- */
-function loadSrc(song) {
-  srcTry = { songId: song.id, n: 0 };
-  audioEl.src = rawUrl(song.file_path);
+/* ---------- playback link (Edge Function) ---------- */
+async function getStreamUrl(song) {
+  const c = streamUrls.get(song.id);
+  if (c && c.exp - Math.floor(Date.now() / 1000) > 300) return { ok: true, ...c };
+  const res = await fnCall('songs', 'POST', { op: 'stream-url', id: song.id });
+  if (res.ok && res.data && res.data.url) {
+    const entry = { url: res.data.url, exp: res.data.expires_at || 0 };
+    streamUrls.set(song.id, entry);
+    return { ok: true, ...entry };
+  }
+  return { ok: false, error: fnErrText(res) };
 }
 
-audioEl.addEventListener('error', () => {
-  const s = currentSong();
-  if (!s || srcTry.songId !== s.id) return;
-  srcTry.n++;
-  if (srcTry.n === 1) {                       /* raw CDN can lag a moment - retry */
-    setTimeout(() => { if (currentSong() === s) audioEl.src = rawUrl(s.file_path); }, 1600);
-  } else if (srcTry.n === 2) {                /* jsDelivr mirror */
-    audioEl.src = cdnUrl(s.file_path);
-  } else {
-    toast('Could not load <b>' + esc(s.title) + '</b>. Try again in a minute.', 'error', 6000);
-  }
-});
-
 /* ---------- play current ---------- */
-function playCurrent() {
+async function playCurrent() {
   const s = currentSong();
   if (!s) return;
-  loadSrc(s);
   updatePlayerBar(s);
   if (typeof refreshRowMarks === 'function') refreshRowMarks();
+  const link = await getStreamUrl(s);
+  if (!link.ok) {
+    toast('Could not get a playback link for <b>' + esc(s.title) + '</b>: ' + link.error, 'error', 7000);
+    setPlayIcon(false);
+    return;
+  }
+  audioEl.src = link.url;
   audioEl.play().catch(() => {});
   setMediaSession(s);
 }
+
+/* If the signed link went stale mid-session, mint a fresh one and retry once. */
+audioEl.addEventListener('error', () => {
+  const s = currentSong();
+  if (!s || !audioEl.src) return;
+  if (srcTry.songId === s.id && srcTry.n >= 1) {
+    toast('Could not load <b>' + esc(s.title) + '</b>. Check your connection and try again.', 'error', 6000);
+    return;
+  }
+  srcTry = { songId: s.id, n: srcTry.songId === s.id ? srcTry.n + 1 : 1 };
+  streamUrls.delete(s.id);
+  playCurrent();
+});
 
 function updatePlayerBar(s) {
   const cover = document.getElementById('pc-cover');
