@@ -46,6 +46,8 @@ function authErrText(e) {
   const m = (e && e.message) || '';
   if (/Failed to fetch|NetworkError|fetch failed/i.test(m))
     return 'Can\u2019t reach the login service. If this keeps happening, your free Supabase project may be paused \u2014 open supabase.com, go to your project and press <b>Restore</b>, then try again.';
+  if (/invite code/i.test(m))
+    return 'That invite code isn\u2019t right. Ask for the current code!';
   if (/Database error saving new user/i.test(m))
     return 'Sign-up was rejected \u2014 most likely the invite code is wrong. Double-check it!';
   if (/Invalid login credentials/i.test(m)) return 'Wrong email or password.';
@@ -75,8 +77,10 @@ document.getElementById('login-form').addEventListener('submit', async e => {
 });
 
 /* signup - the invite code travels in signup metadata and is
-   checked by a database trigger on auth.users. The JS check
-   below is only for quick feedback. */
+   validated by the database trigger on auth.users against the
+   private app_config table. There is deliberately NO JavaScript
+   check: the code never ships to the browser, so nothing in
+   this public repo reveals it. */
 document.getElementById('signup-form').addEventListener('submit', async e => {
   e.preventDefault();
   formError('signup-error');
@@ -85,7 +89,6 @@ document.getElementById('signup-form').addEventListener('submit', async e => {
   const invite = document.getElementById('signup-invite').value.trim();
   if (!email || !pass || !invite) { formError('signup-error', 'Fill in all three fields.'); return; }
   if (pass.length < 6) { formError('signup-error', 'Passwords need at least 6 characters.'); return; }
-  if (invite !== INVITE_CODE) { formError('signup-error', 'That invite code isn\u2019t right. Ask for the current code!'); return; }
   const btn = document.getElementById('signup-btn');
   btn.disabled = true; btn.textContent = 'Creating account...';
   try {

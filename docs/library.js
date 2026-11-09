@@ -147,10 +147,15 @@ async function deleteSong(s) {
   streamUrls && streamUrls.delete && streamUrls.delete(s.id);
 
   if (playingId() === s.id) {
-    if (queue.length > 1) playNext(false); else stopPlayback();
+    /* Deleting the song that is playing STOPS playback (pause +
+       clear the queue). It must never skip to the next song. */
+    stopPlayback();
+    toast('Deleted \u201C' + esc(s.title) + '\u201D \u2014 playback stopped');
+  } else {
+    removeFromQueue(s.id);   // dead entry out of the queue; current song keeps playing
+    toast('Deleted \u201C' + esc(s.title) + '\u201D');
   }
   refreshAll();
-  toast('Deleted \u201C' + esc(s.title) + '\u201D');
 }
 
 /* ============================================================

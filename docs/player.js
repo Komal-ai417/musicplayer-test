@@ -74,6 +74,18 @@ function stopPlayback() {
   if (typeof refreshRowMarks === 'function') refreshRowMarks();
 }
 
+/* Drop a deleted song from the queue without touching whatever is
+   currently playing. Deleting the PLAYING song is the caller's
+   business: it must call stopPlayback() — playback never
+   auto-advances in that case. */
+function removeFromQueue(songId) {
+  const idx = queue.findIndex(x => x.id === songId);
+  if (idx < 0 || idx === qpos) return;
+  queue.splice(idx, 1);
+  if (idx < qpos) qpos--;
+  history = history.filter(i => i !== idx).map(i => i > idx ? i - 1 : i);
+}
+
 /* ---------- playback link (Edge Function) ---------- */
 async function getStreamUrl(song) {
   const c = streamUrls.get(song.id);
