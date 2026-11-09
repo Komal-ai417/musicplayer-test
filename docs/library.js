@@ -57,6 +57,9 @@ function songRow(s, i) {
 
   row.addEventListener('click', e => {
     if (e.target.closest('button')) return;
+    /* Tapping the song that is already playing toggles play/pause
+       (like Spotify) instead of restarting it from 0:00. */
+    if (playingId() === s.id) { togglePlay(); return; }
     setQueue(visibleSongs(), i);
   });
   row.querySelector('.row-menu').addEventListener('click', e => {
@@ -184,13 +187,32 @@ function handleFiles(fileList) {
   const files = [...fileList].filter(f => f.type.startsWith('audio/') || /\.(mp3|m4a|flac|wav|ogg|aac|opus|webm)$/i.test(f.name));
   if (!files.length) { toast('Those files aren\u2019t audio \u2014 pick mp3 / m4a / wav / ogg files.', 'warn'); return; }
 
+  /* Skip duplicates of files that are already waiting or uploading
+     (same name + size) \u2014 dragging the same songs in twice used to
+     upload them twice. */
+  const inFlight = new Set(state.uploads
+    .filter(u => ['waiting', 'reading', 'uploading', 'saving'].includes(u.status))
+    .map(u => u.name + ':' + u.size));
+  const fresh = [];
+  let skipped = 0;
+  for (const f of files) {
+    const key = f.name + ':' + f.size;
+    if (inFlight.has(key)) { skipped++; continue; }
+    inFlight.add(key);
+    fresh.push(f);
+  }
+  if (skipped) {
+    toast(skipped + (skipped === 1 ? ' file was' : ' files were') + ' already in the upload list \u2014 skipped.', 'warn', 5000);
+  }
+  if (!fresh.length) return;
+
   const pendingCount = state.uploads.filter(u => u.status !== 'done' && u.status !== 'error').length;
   const cap = state.cfg.max_songs_per_user || 200;
-  if (state.songs.length + pendingCount + files.length > cap) {
+  if (state.songs.length + pendingCount + fresh.length > cap) {
     toast('That would pass your limit of ' + cap + ' songs per person. Delete a few first.', 'warn', 6000);
     return;
   }
-  for (const f of files) {
+  for (const f of fresh) {
     state.uploads.push({ file: f, name: f.name, size: f.size, status: 'waiting', pct: 0, err: '' });
   }
   renderUploadList();
@@ -215,10 +237,21 @@ function renderUploadList() {
       '<div class="up-meta"><span>' + meta + '</span></div>' +
       '<div class="up-bar"><i style="width:' + Math.round(it.pct * 100) + '%"></i></div>' +
       (it.err ? '<div class="up-err">' + it.err + '</div>' : '') +
-      (it.status === 'error' ? '<button class="linklike">Dismiss</button>' : '');
-    if (it.status === 'error') d.querySelector('button').addEventListener('click', () => {
-      state.uploads = state.uploads.filter(u => u !== it); renderUploadList();
-    });
+      (it.status === 'error'
+        ? '<button class="linklike up-retry">Retry</button><button class="linklike up-dismiss">Dismiss</button>'
+        : '');
+    if (it.status === 'error') {
+      const rb = d.querySelector('.up-retry');
+      if (rb) rb.addEventListener('click', () => {
+        it.status = 'waiting'; it.pct = 0; it.err = '';
+        renderUploadList();
+        processUploadQueue();
+      });
+      const db = d.querySelector('.up-dismiss');
+      if (db) db.addEventListener('click', () => {
+        state.uploads = state.uploads.filter(u => u !== it); renderUploadList();
+      });
+    }
     wrap.appendChild(d);
   }
 }
@@ -336,7 +369,9 @@ async function makeThumb(picture) {
         const u = URL.createObjectURL(blob);
         const im = new Image();
         im.onload = () => { URL.revokeObjectURL(u); res(im); };
-        im.onerror = rej; im.src = u;
+        /* revoke even on failure \u2014 otherwise the blob URL leaks */
+        im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('image decode failed')); };
+        im.src = u;
       });
       w = img.width; h = img.height; src = img;
     }

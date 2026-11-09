@@ -289,6 +289,9 @@ function showAuth() {
     } else if (evt === 'SIGNED_IN' || evt === 'USER_UPDATED') {
       if (session) enterApp(session);
     } else if (evt === 'SIGNED_OUT') {
+      /* Covers BOTH the logout button and automatic expiry/revocation:
+         private audio must never keep playing behind the login screen. */
+      stopPlayback();
       showAuth();
     } else if (evt === 'PASSWORD_RECOVERY') {
       show('auth-screen');

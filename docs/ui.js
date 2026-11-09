@@ -63,6 +63,7 @@ const ICONS = {
   playCircle: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 14.5v-9l6 4.5-6 4.5z"/>',
   pencil: '<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>',
   x:      '<path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>',
+  queue:  '<path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>',
 };
 
 function icon(name, size = 18) {
@@ -162,13 +163,29 @@ function promptModal(title, bodyHtml, placeholder = '', initial = '') {
 }
 
 /* ---------- cover art helpers ---------- */
+/* Only strict base64 data:image URIs are ever rendered. The regex's
+   character set excludes quotes, angle brackets and spaces, so a
+   value that passes it cannot break out of an HTML attribute —
+   stored-XSS via song metadata is impossible even if a bad row
+   ever lands in the database (the upload function also validates
+   this server-side; this is the second lock). */
+const SAFE_COVER_RE = /^data:image\/(?:jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/i;
+
+function safeCoverImg(data, alt = '') {
+  if (typeof data === 'string' && SAFE_COVER_RE.test(data)) {
+    return '<img src="' + data + '" alt="' + alt + '" loading="lazy" />';
+  }
+  return '';
+}
+
 function coverTileStyle(id) {
   const h = hueFromString(id);
   return 'background:linear-gradient(135deg,hsl(' + h + ',42%,38%),hsl(' + ((h + 50) % 360) + ',42%,20%))';
 }
 
 function coverHtml(song, size) {
-  if (song.cover_data) return '<img src="' + song.cover_data + '" alt="" loading="lazy" />';
+  const img = song && song.cover_data ? safeCoverImg(song.cover_data) : '';
+  if (img) return img;
   return '<span class="note-mark" style="' + (size ? '' : '') + '"></span>';
 }
 

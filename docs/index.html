@@ -185,6 +185,7 @@
         </button>
         <button id="btn-next" class="icon-btn" title="Next"><span data-ico="next"></span></button>
         <button id="btn-repeat" class="icon-btn mode" title="Repeat"><span data-ico="repeat"></span></button>
+        <button id="btn-queue" class="icon-btn" title="Up next"><span data-ico="queue"></span></button>
       </div>
       <div class="pb-seek">
         <span id="time-cur" class="muted tiny">0:00</span>
@@ -200,6 +201,13 @@
 </section>
 
 <audio id="audio" preload="metadata"></audio>
+<div id="queue-panel" hidden>
+  <div class="qp-head">
+    <b>Up next</b> <span id="qp-count" class="muted tiny"></span>
+    <button id="qp-close" class="icon-btn" title="Close"><span data-ico="x"></span></button>
+  </div>
+  <div id="qp-list"></div>
+</div>
 <div id="drop-overlay" hidden><div class="do-card">Drop your songs to upload</div></div>
 <div id="toasts" aria-live="polite"></div>
 <div id="menu-layer" hidden></div>
