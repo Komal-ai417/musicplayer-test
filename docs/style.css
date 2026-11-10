@@ -338,6 +338,112 @@ input[type=range]:hover::-moz-range-thumb{opacity:1}
 .qp-row.now{color:var(--green-hi)}
 .qp-empty{padding:22px 14px;color:var(--muted);font-size:13px;text-align:center}
 
+/* ---------- lyrics panel ---------- */
+#lyrics-panel{
+  position:fixed;right:12px;bottom:106px;z-index:80;width:min(400px,calc(100vw - 24px));
+  background:#000;border:1px solid #ffffff14;border-radius:var(--r-lg);
+  box-shadow:0 16px 48px rgba(0,0,0,.6);display:flex;flex-direction:column;
+  max-height:min(64vh,520px);
+}
+.lp-head{display:flex;align-items:center;gap:6px;padding:12px 12px 12px 16px;border-bottom:1px solid #ffffff10;flex:none}
+.lp-meta{flex:1;min-width:0}
+.lp-meta b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lp-list{overflow-y:auto;padding:14px 18px 22px}
+.lyrics-line{
+  font-size:16px;font-weight:600;line-height:1.5;color:var(--muted);
+  padding:5px 8px;border-radius:6px;transition:color .2s,background .2s;
+}
+.lyrics-line.sync{cursor:pointer}
+.lyrics-line.sync:hover{color:var(--text);background:#ffffff0a}
+.lyrics-line.active{color:var(--text);background:#ffffff10}
+.lp-empty{color:var(--muted);font-size:14px;text-align:center;padding:34px 14px;line-height:1.6}
+.lp-empty .btn{margin-top:14px}
+
+/* ---------- equalizer panel ---------- */
+#eq-panel{
+  position:fixed;right:12px;bottom:106px;z-index:80;width:min(430px,calc(100vw - 24px));
+  background:#000;border:1px solid #ffffff14;border-radius:var(--r-lg);
+  box-shadow:0 16px 48px rgba(0,0,0,.6);display:flex;flex-direction:column;
+  max-height:min(70vh,560px);
+}
+.eq-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #ffffff10;flex:none}
+.eq-head b{font-size:13px}
+.eq-toggle{
+  margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.8px;
+  padding:4px 12px;border-radius:999px;border:1px solid var(--faint);color:var(--muted);
+}
+.eq-toggle.on{background:var(--green);border-color:var(--green);color:#000}
+.eq-close{margin-left:0}
+.eq-body{padding:14px 16px 16px;overflow-y:auto}
+.eq-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.eq-row .eq-lbl{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.6px;flex:none;min-width:58px}
+.eq-row input[type=range]{flex:1}
+.eq-row .eq-val{font-size:12px;color:var(--text);font-variant-numeric:tabular-nums;min-width:52px;text-align:right;flex:none}
+.eq-select{
+  flex:1;background:#141414;border:1px solid #3a3a3a;border-radius:8px;color:var(--text);
+  padding:8px 10px;outline:none;font-size:13px;
+}
+.eq-bands{display:grid;grid-template-columns:repeat(5,1fr);gap:10px 14px;margin:6px 0 14px}
+.eq-band{display:flex;flex-direction:column;align-items:center;gap:6px}
+.eq-band input[type=range]{width:100%}
+.eq-band .eq-lbl{font-size:11px;color:var(--faint);font-weight:600}
+.eq-band .eq-val{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.eq-note{margin-top:4px}
+
+/* ---------- browse grid (artists / albums) ---------- */
+.browse-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));
+  gap:16px;padding:8px 24px 30px;
+}
+.tile{
+  display:flex;flex-direction:column;align-items:flex-start;gap:9px;
+  padding:14px;background:#ffffff08;border-radius:var(--r);text-align:left;
+  transition:background .15s,transform .08s;
+}
+.tile:hover{background:#ffffff12;transform:translateY(-2px)}
+.tile .tile-art{
+  width:110px;height:110px;border-radius:50%;overflow:hidden;flex:none;
+  display:flex;align-items:center;justify-content:center;color:#ffffffd9;background:var(--hi);
+}
+.tile .tile-art img{width:100%;height:100%;object-fit:cover}
+.tile .tile-name{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.tile .tile-sub{font-size:12px}
+
+/* ---------- admin users view ---------- */
+.admin-table{padding:0 24px 30px}
+.admin-row{
+  display:grid;grid-template-columns:minmax(180px,2.2fr) 64px 78px 96px 96px 118px;
+  gap:10px;align-items:center;padding:11px 14px;border-radius:8px;font-size:14px;
+}
+.admin-row.head{
+  color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:700;
+  border-bottom:1px solid #ffffff10;border-radius:0;margin-bottom:4px;
+}
+.admin-row:not(.head):hover{background:#ffffff0d}
+.admin-row .a-email{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.admin-row .a-actions{text-align:right}
+.badge{
+  display:inline-block;background:var(--green);color:#000;font-size:10px;font-weight:800;
+  letter-spacing:.5px;border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px;
+}
+.btn-sm{padding:6px 14px;font-size:13px}
+
+/* deletion progress modal */
+.modal-area{
+  width:100%;min-height:220px;resize:vertical;background:#111;border:1px solid #3a3a3a;
+  border-radius:8px;padding:11px 13px;color:var(--text);outline:none;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;
+}
+.modal-area:focus{border-color:#8f8f8f}
+.del-progress{height:6px;border-radius:3px;background:#3a3a3a;overflow:hidden;margin-bottom:14px}
+.del-progress i{display:block;height:100%;background:var(--green-hi);width:0;transition:width .3s}
+.del-stages{list-style:none;margin:0 0 8px;padding:0}
+.del-stages li{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:13px;padding:5px 0}
+.del-stages li .dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.del-stages li.active{color:var(--text)}
+.del-stages li.active .dot{border-color:var(--amber)}
+.del-stages li.ok{color:var(--muted)}
+.del-stages li.ok .dot{border-color:var(--green-hi);background:var(--green-hi)}
+
 /* ---------- responsive ---------- */
 @media (max-width:900px){
   #app-screen{grid-template-columns:1fr;grid-template-rows:auto 1fr 76px;grid-template-areas:"side" "main" "player"}
@@ -353,12 +459,32 @@ input[type=range]:hover::-moz-range-thumb{opacity:1}
   #view-header h2{font-size:24px}
   .song-row.head{top:58px}
   #queue-panel{bottom:88px}
+  #lyrics-panel{bottom:88px;max-height:52vh}
+  #eq-panel{bottom:88px;max-height:60vh}
   #upload-list{max-height:120px}
+  .browse-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));padding:8px 14px 24px;gap:12px}
+  .tile .tile-art{width:88px;height:88px}
+  .admin-row{grid-template-columns:minmax(120px,1.6fr) 46px 64px 64px 84px;gap:6px;font-size:13px}
+  .admin-row span:nth-child(4){display:none}
+  .pb-controls{gap:0}
+  .lyrics-line{font-size:14px}
+  .eq-bands{grid-template-columns:repeat(5,1fr);gap:8px 8px}
 }
 @media (max-width:560px){
   .side-logo{padding:14px 16px 8px}
   .pc-cover{width:44px;height:44px}
+  #player-bar{min-width:0;padding:0 8px}          /* let the grid track shrink */
+  .pb-left,.pb-center{min-width:0}
+  .pb-seek input{min-width:0}
+  .pb-controls .icon-btn{width:30px;height:30px}  /* 7 controls + play must fit narrow screens */
+  .btn-play{width:38px;height:38px}
   .pb-controls{gap:2px}
   .do-card{padding:36px 26px;font-size:17px}
   #toasts{bottom:90px}
+  .sort-btn .sort-lbl{display:none}
+}
+@media (max-width:430px){
+  /* very narrow phones: drop the two mode toggles so the
+     transport + lyrics + EQ + queue buttons still fit */
+  #btn-shuffle,#btn-repeat{display:none}
 }

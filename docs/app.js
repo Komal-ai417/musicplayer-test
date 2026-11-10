@@ -241,8 +241,12 @@ function resetState() {
   state.uploads = [];
   state.view = { type: 'all', id: null };
   state.search = '';
+  state.isAdmin = false;
+  state.adminUsers = [];
   document.getElementById('upload-list').innerHTML = '';
   document.getElementById('playlist-nav').innerHTML = '';
+  const navU = document.getElementById('nav-users');
+  if (navU) navU.hidden = true;
 }
 
 function showAuth() {
@@ -279,9 +283,28 @@ function showAuth() {
   document.querySelectorAll('[data-ico]').forEach(el => { el.innerHTML = icon(el.dataset.ico, 18); });
   document.title = APP_NAME;
 
+  /* online/offline awareness (the app shell itself works offline
+     via the service worker; songs and changes need the network) */
+  window.addEventListener('offline', () =>
+    toast('You\u2019re offline \u2014 the app keeps running, but songs and changes need the internet.', 'warn', 6000));
+  window.addEventListener('online', () =>
+    toast('Back online.', 'ok', 2200));
+
   if (!isConfigured()) { show('setup-screen'); return; }
 
   state.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  /* admin detection talks to the server AFTER the client exists */
+  if (typeof initAdmin === 'function') initAdmin();
+
+  /* PWA: installable + offline app shell. Only on secure origins
+     (GitHub Pages is https; file:// and plain http are skipped). */
+  if ('serviceWorker' in navigator &&
+      (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => { /* offline support is optional */ });
+    });
+  }
 
   state.sb.auth.onAuthStateChange((evt, session) => {
     if (evt === 'INITIAL_SESSION') {

@@ -7,19 +7,27 @@
 
 /* songs for the current view + search filter */
 function visibleSongs() {
-  let list = state.view.type === 'all'
-    ? state.songs
-    : (typeof playlistSongs === 'function' ? playlistSongs(state.view.id) : []);
+  let list;
+  if (state.view.type === 'all') list = state.songs;
+  else if (state.view.type === 'playlist')
+    list = (typeof playlistSongs === 'function' ? playlistSongs(state.view.id) : []);
+  else if (typeof browseSongs === 'function') list = browseSongs(state.view);
+  else list = [];
   const q = state.search.trim().toLowerCase();
   if (q) {
     list = list.filter(s =>
       (s.title + ' ' + (s.artist || '') + ' ' + (s.album || '')).toLowerCase().includes(q));
   }
+  if (typeof sortSongs === 'function') list = sortSongs(list);
   return list;
 }
 
 /* ---------- rendering ---------- */
 function renderSongList() {
+  /* browse (artists/albums grids) and admin views render themselves */
+  if (typeof renderBrowseView === 'function' && renderBrowseView()) return;
+  if (typeof renderAdminView === 'function' && renderAdminView()) return;
+
   const wrap = document.getElementById('song-list');
   const list = visibleSongs();
   wrap.innerHTML = '';
@@ -86,7 +94,9 @@ function updateViewMeta() {
 
   const baseList = state.view.type === 'all'
     ? state.songs
-    : (typeof playlistSongs === 'function' ? playlistSongs(state.view.id) : []);
+    : state.view.type === 'playlist'
+      ? (typeof playlistSongs === 'function' ? playlistSongs(state.view.id) : [])
+      : (typeof browseSongs === 'function' ? browseSongs(state.view) : []);
   const total = list.reduce((a, s) => a + (s.duration_sec || 0), 0);
   const mins = total ? '\u00B7 ' + Math.max(1, Math.round(total / 60)) + ' min' : '';
   document.getElementById('view-sub').textContent = state.search.trim()
@@ -98,6 +108,7 @@ function updateViewMeta() {
   if (!isAll && typeof addPlaylistHeaderActions === 'function') {
     addPlaylistHeaderActions(actions);
   }
+  if (typeof addSortControl === 'function') addSortControl(actions);
   if (list.length) {
     const b = document.createElement('button');
     b.className = 'btn btn-primary';

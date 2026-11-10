@@ -40,11 +40,18 @@ function showView(view) {
   const si = document.getElementById('search-input');
   si.value = '';
   document.getElementById('nav-all').classList.toggle('active', view.type === 'all');
+  if (typeof updateBrowseNav === 'function') updateBrowseNav(view);
+  if (typeof updateAdminNav === 'function') updateAdminNav(view);
   const title = document.getElementById('view-title');
   if (view.type === 'all') title.textContent = 'All songs';
-  else {
+  else if (view.type === 'playlist') {
     const pl = state.playlists.find(p => p.id === view.id);
     title.textContent = pl ? pl.name : 'Playlist';
+  } else if (view.type === 'admin-users') {
+    title.textContent = 'Users';
+  } else if (typeof browseViewTitle === 'function') {
+    const t = browseViewTitle(view);
+    if (t) title.textContent = t;
   }
   renderPlaylistNav();
   renderSongList();

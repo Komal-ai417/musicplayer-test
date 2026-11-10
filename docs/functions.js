@@ -49,6 +49,7 @@ function fnErrText(res) {
     return 'Can\u2019t reach the server. If this keeps happening, your free Supabase project may be paused \u2014 open supabase.com, press <b>Restore</b>, and reload.';
   }
   if (res.status === 401) return 'Your session expired \u2014 please log in again.';
+  if (res.status === 429) return 'Too many requests \u2014 the server asked us to slow down. Wait a moment, then try again.';
   const m = res.data && res.data.error ? res.data.error : '';
   if (m) return esc(m);
   return 'Something went wrong (error ' + res.status + '). Try again.';

@@ -6,6 +6,8 @@
 <title>Our Music</title>
 <meta name="description" content="Our own little music corner." />
 <meta name="theme-color" content="#000000" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231db954'%3E%3Cpath d='M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z'/%3E%3C/svg%3E" />
 <link rel="stylesheet" href="./style.css" />
 </head>
@@ -92,6 +94,19 @@
         <span class="sn-ico" data-ico="note"></span>
         <span class="sn-label">All songs</span>
         <span id="nav-count" class="pill" hidden></span>
+      </button>
+      <button id="nav-artists" class="side-nav-item">
+        <span class="sn-ico" data-ico="person"></span>
+        <span class="sn-label">Artists</span>
+      </button>
+      <button id="nav-albums" class="side-nav-item">
+        <span class="sn-ico" data-ico="album"></span>
+        <span class="sn-label">Albums</span>
+      </button>
+      <button id="nav-users" class="side-nav-item" hidden>
+        <span class="sn-ico" data-ico="users"></span>
+        <span class="sn-label">Users</span>
+        <span class="pill">admin</span>
       </button>
     </nav>
 
@@ -185,6 +200,8 @@
         </button>
         <button id="btn-next" class="icon-btn" title="Next"><span data-ico="next"></span></button>
         <button id="btn-repeat" class="icon-btn mode" title="Repeat"><span data-ico="repeat"></span></button>
+        <button id="btn-lyrics" class="icon-btn" title="Lyrics"><span data-ico="text"></span></button>
+        <button id="btn-eq" class="icon-btn mode" title="Equalizer"><span data-ico="tune"></span></button>
         <button id="btn-queue" class="icon-btn" title="Up next"><span data-ico="queue"></span></button>
       </div>
       <div class="pb-seek">
@@ -208,6 +225,22 @@
   </div>
   <div id="qp-list"></div>
 </div>
+<div id="lyrics-panel" hidden>
+  <div class="lp-head">
+    <div class="lp-meta"><b class="lp-title"></b><span class="muted tiny">tap a line to jump there</span></div>
+    <button class="icon-btn lp-edit" title="Edit lyrics"><span data-ico="pencil"></span></button>
+    <button class="icon-btn lp-close" title="Close"><span data-ico="x"></span></button>
+  </div>
+  <div class="lp-list"></div>
+</div>
+<div id="eq-panel" hidden>
+  <div class="eq-head">
+    <b>Equalizer</b>
+    <button class="eq-toggle" title="Turn the equalizer on or off">OFF</button>
+    <button class="icon-btn eq-close" title="Close"><span data-ico="x"></span></button>
+  </div>
+  <div class="eq-body"></div>
+</div>
 <div id="drop-overlay" hidden><div class="do-card">Drop your songs to upload</div></div>
 <div id="toasts" aria-live="polite"></div>
 <div id="menu-layer" hidden></div>
@@ -217,10 +250,16 @@
 <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.7/dist/jsmediatags.min.js"></script>
 <script src="./config.js"></script>
 <script src="./ui.js"></script>
+<script src="./om-core.js"></script>
 <script src="./functions.js"></script>
 <script src="./player.js"></script>
+<script src="./equalizer.js"></script>
+<script src="./lyrics.js"></script>
+<script src="./sort.js"></script>
+<script src="./browse.js"></script>
 <script src="./library.js"></script>
 <script src="./playlists.js"></script>
+<script src="./admin.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

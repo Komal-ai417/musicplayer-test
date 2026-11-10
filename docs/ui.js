@@ -64,6 +64,13 @@ const ICONS = {
   pencil: '<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>',
   x:      '<path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>',
   queue:  '<path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>',
+  tune:   '<path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2H8v2h5zM13 9v2h3v2h2v-2h3V9h-8zM7 11v2H3v2h4v2h2v-6H7z"/>',
+  text:   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>',
+  sort:   '<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>',
+  users:   '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
+  person: '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
+  album:  '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>',
+  shield: '<path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>',
 };
 
 function icon(name, size = 18) {
@@ -158,6 +165,33 @@ function promptModal(title, bodyHtml, placeholder = '', initial = '') {
     inp.addEventListener('keydown', e => {
       if (e.key === 'Enter') done(inp.value.trim());
       if (e.key === 'Escape') done(null);
+    });
+  });
+}
+
+/* Like promptModal, but for multi-line text (lyrics editor). */
+function textareaModal(title, bodyHtml, initial = '', placeholder = '') {
+  return new Promise(resolve => {
+    const card = $('#modal-card');
+    card.innerHTML =
+      '<h3>' + esc(title) + '</h3>' +
+      '<div class="modal-body">' + bodyHtml + '</div>' +
+      '<textarea class="modal-area" placeholder="' + esc(placeholder) + '"></textarea>' +
+      '<div class="modal-actions">' +
+        '<button class="btn btn-ghost" data-x="0">Cancel</button>' +
+        '<button class="btn btn-primary" data-x="1">Save</button>' +
+      '</div>';
+    const ta = $('textarea', card);
+    ta.value = initial;
+    $('#modal-layer').hidden = false;
+    ta.focus();
+    const done = v => { closeModal(); resolve(v); };
+    $$('[data-x]', card).forEach(b => b.addEventListener('click', () => {
+      done(b.dataset.x === '1' ? ta.value : null);
+    }));
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'Escape') done(null);
+      e.stopPropagation();   // don't trigger the global space/arrows handlers
     });
   });
 }
