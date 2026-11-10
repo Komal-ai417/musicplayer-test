@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Unit + e2e tests
@@ -40,3 +43,42 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: test
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      # Stamp the service-worker cache with this commit so every deploy
+      # invalidates old cached shells (users get the new version on reload).
+      - name: Bump service worker cache version
+        run: |
+          sed -i "s/^const VERSION = .*/const VERSION = 'om-${GITHUB_SHA::7}';/" docs/sw.js
+          grep -n "^const VERSION" docs/sw.js
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact (docs/)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
