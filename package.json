@@ -1,0 +1,19 @@
+{
+  "name": "our-music",
+  "private": true,
+  "type": "module",
+  "description": "Our Music - family music player (frontend + Supabase Edge Functions). Tests only; the site itself is plain static files under docs/.",
+  "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run --dir tests/unit",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "icons": "python3 scripts/make_icons.py"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@supabase/supabase-js": "^2.47.10",
+    "jsmediatags": "^3.9.7",
+    "vitest": "^2.1.9"
+  }
+}
